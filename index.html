@@ -1,0 +1,302 @@
+﻿<!DOCTYPE html>
+<html>
+	<head>
+		<!-- This file was created by M.C. DeMarco, based on my implementation of 6x10.
+				 It implements Alfonso Velasco's 2p Decktet game Deckfish, plus a solo version. -->
+
+	<title>Deckfish, a Decktet game</title>
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-title" content="Deckfish">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+	
+	<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-180.png">
+	<link rel="shortcut icon" sizes="196x196" href="assets/favicon-196.png">
+	<link rel="icon" type="image/png" href="assets/favicon.png">
+
+<!-- TODO: switched to compressed version of lz-string. -->
+	
+	<script src="js/decktet.js" type="text/javascript"></script>
+	<script src="js/lz-string.js" type="text/javascript"></script>
+	<script src="js/main.js" type="text/javascript"></script>
+	<link href="css/main.css" rel="stylesheet" type="text/css" />
+
+</head>
+<body>
+
+
+	<div id="header">
+		<div id="titleLeft">
+			<div id="title">Deckfish</div>
+		</div>
+		<div id="buttondiv">
+			<div id="dangerbuttons">
+				<button type="button" class="button" id="startButton" title="Start a new game">New</button>
+				<button type="button" class="button" id="replayButton" title="Replay the last deal" disabled>Replay</button>
+			</div>
+			<div id="lastbutton">
+				<button type="button" class="button" id="shareButton" title="Share next turn URL">Share</button>
+			</div>
+		</div>
+		<div id="infoWrapper">
+			<div id="turner"></div>
+			<br/>
+			<div id="message"></div>
+			<button id="question" type="button"></button>
+		</div>
+
+		<div id="panelLinks">
+			<span data-panel="whatsthestory" class="linky">About</span>
+			<span data-panel="rules" class="linky">Rules</span>
+			<span data-panel="settingsPanel" class="linky">Settings</span>
+			<span data-panel="logPanel" class="linky">Log</span>
+		</div>
+	</div>
+
+  <div id="playarea">
+    <div id="tableauRow1" class="gamerow">
+      <div class="cardspace" id="tableau0-0" data-row="0" data-col="0"></div>
+      <div class="cardspace" id="tableau0-1" data-row="0" data-col="1"></div>
+      <div class="cardspace" id="tableau0-2" data-row="0" data-col="2"></div>
+      <div class="cardspace" id="tableau0-3" data-row="0" data-col="3"></div>
+      <div class="cardspace" id="tableau0-4" data-row="0" data-col="4"></div>
+      <div class="cardspace" id="tableau0-5" data-row="0" data-col="5"></div>
+      <div class="cardspace" id="tableau0-6" data-row="0" data-col="6"></div>
+      <div class="space" id="space1"><cite>1</cite></div>
+      <div class="marketspace" id="market0" data-row="0" data-col="-1"></div>
+		</div>
+    <div id="tableauRow2" class="gamerow">
+      <div class="cardspace" id="tableau1-0" data-row="1" data-col="0"></div>
+      <div class="cardspace" id="tableau1-1" data-row="1" data-col="1"></div>
+      <div class="cardspace" id="tableau1-2" data-row="1" data-col="2"></div>
+      <div class="cardspace" id="tableau1-3" data-row="1" data-col="3"></div>
+      <div class="cardspace" id="tableau1-4" data-row="1" data-col="4"></div>
+      <div class="cardspace" id="tableau1-5" data-row="1" data-col="5"></div>
+      <div class="cardspace" id="tableau1-6" data-row="1" data-col="6"></div>
+      <div class="space" id="space2"><cite>2</cite></div>
+      <div class="marketspace" id="market1" data-row="1" data-col="-1"></div>
+			<div id="marketTitle">Market</div>
+    </div>
+    <div id="tableauRow3" class="gamerow">
+      <div class="cardspace" id="tableau2-0" data-row="2" data-col="0"></div>
+      <div class="cardspace" id="tableau2-1" data-row="2" data-col="1"></div>
+      <div class="cardspace" id="tableau2-2" data-row="2" data-col="2"></div>
+      <div class="cardspace" id="tableau2-3" data-row="2" data-col="3"></div>
+      <div class="cardspace" id="tableau2-4" data-row="2" data-col="4"></div>
+      <div class="cardspace" id="tableau2-5" data-row="2" data-col="5"></div>
+      <div class="cardspace" id="tableau2-6" data-row="2" data-col="6"></div>
+      <div class="space" id="space3"><cite>3</cite></div>
+      <div class="marketspace" id="market2" data-row="2" data-col="-1"></div>
+    </div>
+    <div id="tableauRow4" class="gamerow">
+      <div class="cardspace" id="tableau3-0" data-row="3" data-col="0"></div>
+      <div class="cardspace" id="tableau3-1" data-row="3" data-col="1"></div>
+      <div class="cardspace" id="tableau3-2" data-row="3" data-col="2"></div>
+      <div class="cardspace" id="tableau3-3" data-row="3" data-col="3"></div>
+      <div class="cardspace" id="tableau3-4" data-row="3" data-col="4"></div>
+      <div class="cardspace" id="tableau3-5" data-row="3" data-col="5"></div>
+      <div class="cardspace" id="tableau3-6" data-row="3" data-col="6"></div>
+      <div class="space" id="space4"><cite>4</cite></div>
+			<div id="tablespace">	
+				<div id="scoreTable">
+				<table>
+					<th id="startPlayerHeader"></th>
+					<th></th>
+					<th id="otherPlayerHeader"></th>
+					<tr><td class="startPlayerScore score"></td><td><img src="cards/moons_black.png" alt="Moons" id="scoreMoon"/></td><td class="otherPlayerScore score"></td></tr>
+					<tr><td class="startPlayerScore score"></td><td><img src="cards/suns.png" alt="Suns"/></td><td class="otherPlayerScore score"></td></tr>
+					<tr><td class="startPlayerScore score"></td><td><img src="cards/waves.png" alt="Waves"/></td><td class="otherPlayerScore score"></td></tr>
+					<tr><td class="startPlayerScore score"></td><td><img src="cards/leaves.png" alt="Leaves"/></td><td class="otherPlayerScore score"></td></tr>
+					<tr><td class="startPlayerScore score"></td><td><img src="cards/wyrms.png" alt="Wyrms"/></td><td class="otherPlayerScore score"></td></tr>
+					<tr><td class="startPlayerScore score"></td><td><img src="cards/knots.png" alt="Knots"/></td><td class="otherPlayerScore score"></td></tr>
+				</table>
+			</div>
+			</div>
+    </div>
+    <div id="tableauRow5" class="gamerow">
+      <div class="cardspace" id="tableau4-0" data-row="4" data-col="0"></div>
+      <div class="cardspace" id="tableau4-1" data-row="4" data-col="1"></div>
+      <div class="cardspace" id="tableau4-2" data-row="4" data-col="2"></div>
+      <div class="cardspace" id="tableau4-3" data-row="4" data-col="3"></div>
+      <div class="cardspace" id="tableau4-4" data-row="4" data-col="4"></div>
+      <div class="cardspace" id="tableau4-5" data-row="4" data-col="5"></div>
+      <div class="cardspace" id="tableau4-6" data-row="4" data-col="6"></div>
+			<div class="space" id="space5"><cite>5</cite></div>
+    </div>
+    <div id="tableauRow6" class="gamerow">
+      <div class="cardspace" id="tableau5-0" data-row="5" data-col="0"></div>
+      <div class="cardspace" id="tableau5-1" data-row="5" data-col="1"></div>
+      <div class="cardspace" id="tableau5-2" data-row="5" data-col="2"></div>
+      <div class="cardspace" id="tableau5-3" data-row="5" data-col="3"></div>
+      <div class="cardspace" id="tableau5-4" data-row="5" data-col="4"></div>
+      <div class="cardspace" id="tableau5-5" data-row="5" data-col="5"></div>
+      <div class="cardspace" id="tableau5-6" data-row="5" data-col="6"></div>
+			<div class="space" id="space6"><cite>6</cite></div>
+    </div>
+    <div id="citerow" class="gamerow">
+      <div class="shortspace"><cite>a</cite></div>
+      <div class="shortspace"><cite>b</cite></div>
+      <div class="shortspace"><cite>c</cite></div>
+      <div class="shortspace"><cite>d</cite></div>
+      <div class="shortspace"><cite>e</cite></div>
+      <div class="shortspace"><cite>f</cite></div>
+      <div class="shortspace"><cite>g</cite></div>
+    </div>
+	</div>
+
+
+
+  <div id="gameOver" class="panel">
+        <h2>Game Over!</h2>
+				<p></p>
+        <button type="button" id="gameOverCloseButton" class="close button">Close</button>
+  </div>
+
+  <div id="whatsthestory" class="panel">
+						<h3>About the Decktet</h3>
+						<p>The Decktet is an alternative deck of cards with six suits (named Moons <img class="symbol" src="cards/moons_black.png" alt="suit symbol for moons"/>, Suns <img class="symbol" src="cards/suns.png" alt="suit symbol for suns"/>, Waves <img class="symbol" src="cards/waves.png" alt="suit symbol for waves"/>, Leaves <img class="symbol" src="cards/leaves.png" alt="suit symbol for leaves"/>, Wyrms <img class="symbol" src="cards/wyrms.png" alt="suit symbol for wyrms"/>, and Knots <img class="symbol" src="cards/knots.png" alt="suit symbol for knots"/>), ten to twelve ranks, multiple suits on most cards, and other intriguing features not used while playing Deckfish.  In the Decktet, the ranks are Ace, 2. 3, 4, 5, 6, 7, 8, 9, Pawn, Court, and Crown.  Numbered cards have two suits each.  Aces have a single, round suit marker <img class="symbol" src="cards/wyrms.png" alt="suit symbol for wyrms"/> in the center and corners, and Crowns <img class="symbol" src="cards/crown.png" alt="crown symbol"/> also have only one suit.  Pawns <img class="symbol" src="cards/pawn.png" alt="pawn symbol"/> and Courts <img class="symbol" src="cards/court.png" alt="court symbol"/> are triple-suited cards, and The Excuse has no suits.  The suit distribution follows no particular pattern.</p>
+
+            <h3>About the Game</h3>
+						<p>Deckfish is a two player game of map reduction and suit collection where the player with the most of their least collected suit wins.  In this solitaire variant, you will also try to collect suits on a constantly shrinking gameboard.</p>
+
+            <h3>Credits</h3>
+            <p>The Decktet card system was created by P.D. Magnus. The card images and card backs shown here are released under a Creative Commons License by P.D. Magnus.  The optional black moons are a cosmetic change by M.C. DeMarco to increase legibility on small screens.  The handwriting font is Fortune Letters, also by P.D. Magnus.  The background texture is "Skulls" by Adam, from <a href="http://subtlepatterns.com/skulls/">Subtle Patterns</a>.  The meeple icon is from Game-icons.net, used under a CC Attribution license.</p>
+            <p>Please visit the <a href="http://www.decktet.com/">Decktet web site</a> to find out more about the Decktet and to get your own deck.</p>
+            <p>
+							<p id="versionP"><a href="https://boardgamegeek.com/boardgame/432405/deckfish">Deckfish</a> is by Alfonso Velasco. This implementation is by M.C. DeMarco.  The code is available <a href="https://github.com/mcdemarco/Deckfish">at Github</a>.  This is version</p>
+							<p>If you enjoyed this game, you may also want to try <a href="https://mcdemarco.github.io/myrmex/">Myrmex</a>, <a href="https://mcdemarco.github.io/adaman/">Adaman</a>, <a href="https://mcdemarco.net/games/decktet/aucteraden/">Aucteraden</a>, <a href="http://mcdemarco.net/games/decktet/cascades/">Cascades</a>, or  <a href="http://mcdemarco.net/games/decktet/6x10/">6x10</a>.</p>
+							<button type="button" class="close button">Close</button>
+	</div>
+				
+	<div id="rules" class="panel">
+							<h3>How to Play</h3>
+							<p>The two-player game starts with a phase of each player placing their three meeples on three Aces or Crowns, starting with the second player.  After that, the start player makes the first move.   Each player moves one meeple per turn, using one of the six kinds of meeple movement.  (See below for details.)</p> 
+							<p>Choose one of your meeples by clicking on it, and (mentally) choose one of the suits on its current card.  Find a card you can move to using this suit power, and click on that target card.  The card your meeple was on is added to your score; you score one point in each suit on the card (regardless of which suit power you used).</p>
+							<p>After this move, you may optionally exchange an unoccupied card from the board with one of the three market cards.</p>
+							<!--  p>In most browsers, your game will be saved automatically so you can return to it later.  There is an optional undo button, which will undo any number of moves in your current session (but not from a saved game).</p -->
+
+							<h3>The Suit Movements</h3>
+							<p>Each Decktet suit has its own movement type.  Movement and adjacency are orthogonal unless noted otherwise.  You cannot move through or stop on the Excuse, another meeple, or an empty space, unless noted otherwise.</p>
+							<dl>
+								<dt><img class="symbol" src="cards/moons_black.png" alt="suit symbol for moons"/> Moons</dt>
+								<dd>Your meeple passes over empty spaces to land on the first unoccupied card beyond.  If there is no gap, or the first non-gap is occupied or the Excuse, you cannot make this move.</dd>
+
+								<dt><img class="symbol" src="cards/suns.png" alt="suit symbol for suns"/> Suns </dt>
+								<dd>Move one or two spaces in a diagonal line.</dd>
+ 
+								<dt><img class="symbol" src="cards/waves.png" alt="suit symbol for waves"/> Waves</dt>
+								<dd>Move in a straight line as far as possible, to the last unoccupied card before another pawn, the Excuse, or the edge of the board.</dd>
+
+								<dt><img class="symbol" src="cards/leaves.png" alt="suit symbol for leaves"/> Leaves</dt>
+								<dd>Move in a straight line as far as you like, <em>without</em> ending adjacent to another meeple or the Excuse.</dd>
+
+								<dt><img class="symbol" src="cards/wyrms.png" alt="suit symbol for wyrms"/> Wyrms</dt>
+								<dd>Move in a straight line until you meet a meeple, and push that meeple onto the next card in line.  If the next card is occupied, the Excuse, or an empty space, you cannot make this move.</dd>
+
+								<dt><img class="symbol" src="cards/knots.png" alt="suit symbol for knots"/> Knots</dt>
+								<dd>Move three spaces orthogonally, not necessarily in a straight line but without retracing your path.</dd>
+							</dl>
+
+							<h3>Passing</h3>
+
+							<p>If you think you cannot move, you can pass by pressing the <tt>Pass?</tt> button.  If a move is found for you, it will be taken automatically and you will remain in the game.  Otherwise, you are out of the game.  The other player continues until he also has no moves left.</p>
+
+							<h3>The End</h3>
+							<p>The game is over when neither player can move.  Your score will be evaluated automatically.  The winner is the player with the highest score in his lowest-scoring suit.  Ties are broken with subsequent lowest-scoring suits, etc.  It is very difficult to actually tie the game.</p>
+
+							<p>You can always start over with the New Game button, or replay the same game (deal) with the Replay button.</p>
+
+							<h3>Solo and Bot Modes</h3>
+
+							<p>The bot game works just like a two-player game.  The human player plays yellow, and the bot plays purple.  There are some options in the settings to artificially strengthen the bot because he's not very good.</p>
+
+							<p>The solo game is a challenge to improve your score using three meeples on a random board, with three meeple obstacles that don't take turns, but can still be bumped by a Wyrms move.  The human player plays yellow, and the obstacles are purple.  Obstacles are seeded first.  Your high score will be saved locally, but note that Safari throws away local data after a week or so of disuse unless you add Deckfish to the home screen.</p>
+
+
+        <button type="button" class="close button">Close</button>
+  </div>
+
+  <div id="logPanel" class="panel">
+		<h2>Game Log</h2>
+		<div id="gamelog"></div>
+		<br/>
+		<br/>
+		<button type="button" class="close button">Close</button>
+  </div>
+
+  <div id="settingsPanel" class="panel">
+    <h2>Settings</h2>
+
+		<!-- h3>Appearance</h3 -->
+		<div>
+					<p>
+						<button type="button" id="plusButton" class="button">Enlarge</button>
+					</p>
+					<p>Normal card size shows the full card, but it can be hard to make out the suits this way.  Press the Enlarge button at any time to zoom in to just the upper left corners of the cards, or the Normal button to unzoom.  The Enlarge setting also enlarges most text.</p>
+				</div>
+				
+				<div>
+					<p>
+						<label><input type="checkbox" id="emblacken" title="Emblacken" /> Black&nbsp;Moons</label>
+					</p>
+					<p>For added legibility, a black sky background has been added to the moon suit.  Uncheck this option to use the unadulterated artwork in your next game.</p>
+				</div>
+				
+				<!-- a lot to promise div>
+						 <p style="text-align:right;white-space:nowrap;">
+						 <input type="checkbox" id="hints" title="Show the possible moves." /> Show Possible Moves</p>
+						 <p>When selecting a gap, all cards that can go into it will be highlighted.  When selecting a card, any gap it can go into will be highlighted.  Shiftable sequences of cards will also be highlighted.</p>
+						 </div-->
+
+				<!-- h3>Game</h3 -->
+				<div>
+					<p>
+						<label><input type="radio" name="seating" id="solo" value="solo" title="A challenge to beat your best score."/> Solo</label>
+						<label><input type="radio" name="seating" id="bot" value="bot" title="One player against a randomized opponent."/> Bot</label>
+						<br/>
+						<label><input type="radio" name="seating" id="hotseat" value="hotseat" title="Two players on a shared device."/> Hotseat</label>
+						<label><input type="radio" name="seating" id="pbem" value="pbem" title="Two players using shared links."/> PBeM</label>
+					</p>
+					<p>A single player can play a solo puzzle on a random board to beat their high score, or play against a bot opponent.
+						<br/>
+						Two players can play on a shared device (hotseat mode), or by sharing links, PBeM-style.</p>
+				</div>
+
+				<div>
+					<p>
+						<label><input type="radio" name="level" id="level1" title="Easy" value="1" /> Easy</label>
+						<label><input type="radio" name="level" id="level2" title="Medium" value="2" /> Medium</label>
+						<label><input type="radio" name="level" id="level3" title="Hard" value="3" /> Hard</label>
+					</p>
+					<p>Difficulty level for the bot opponent.  The bot is not very smart, so in some cases it will make illegal initial placements.  Otherwise it follows the rules.</p>
+				</div>
+
+				<div>
+					<p>
+						<label><input type="radio" name="starting" id="yellow" value="yellow" title="Yellow starts."/> Yellow</label>
+						<label><input type="radio" name="starting" id="purple" value="purple" title="Purple starts."/> Purple</label>
+						<label><input type="radio" name="starting" id="random" value="random" title="Randomize."/> Random</label>
+					</p>
+					<p>Choose or randomize the start player.  In single-player games, the human plays yellow.</p>
+				</div>
+
+				<div>
+					<p>
+						<button type="button" class="button" id="resetButton" title="Reset all settings.">Reset</button></p>
+					<p>Restore default settings (and erase any saved scores).</p>
+				</div>
+				
+				<button type="button" class="close button">Close</button>
+  </div>
+
+
+
+		<script type="text/javascript">
+		main.game.init();
+		</script>
+
+</body>
+</html>
