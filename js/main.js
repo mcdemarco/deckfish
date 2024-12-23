@@ -132,16 +132,17 @@ context.game = (function () {
 
 		//Return to the suspended listening state.
 		var solo =  isSolo();
-		var meepleCount = solo ? 3 : 6;
-		var turnCount = context.turn.getTurnCount();
 
-		if (phase == 'load' || phase == 'meeple' || turnCount <  meepleCount) {
+		if (phase == 'load' || phase == 'meeple') {
 			//Reactivate meeple stage
 			if (solo)
 				context.meeple.setMeepTurn(0);
 			else {
-				var starter = context.game.getStartPlayer();
-				context.meeple.setMeepTurn((starter + turnCount) % 2);
+				//Meeples are ordered and marked, so we can derive the next turn from them.
+				var meeps = context.meeple.getAll();
+				console.log(meeps);
+				var prevple = meeps.length ? meeps[meeps.length - 1][2] : context.game.getStartPlayer();
+				context.meeple.setMeepTurn(prevple);
 			}
 			context.meeple.controller('reload');
 		} else if (phase == 'move') {
@@ -1776,6 +1777,7 @@ context.meeple = (function () {
 			return;
 		} else if (previous == 'load') {
 			context.message.gamelog("Meeple placement...",1);
+			//This will get incremented.
 			meepTurn = context.game.getStartPlayer();
 			//continue.
 		}
@@ -1788,6 +1790,7 @@ context.meeple = (function () {
 		if (context.game.isSolo()) {
 			meepTurn = 0;
 		} else {
+			//Always increment, including on reload.
 			meepTurn = (meepTurn + 1) % 2;
 		}
 		//continue
@@ -2880,6 +2883,5 @@ context.dom = (function () {
  * polyfill sets for ios 16 (test in simulator)
  * hide share button until meeples placed to reduce sharing complications
  * toggle share/save button or autosave?
- * mysterious bot game where bot wouldn't move and yellow could
- * got high score instead of bot score on a reload? almays?
+ * mysterious bot game where bot wouldn't move and yellow could - fixed?
  */
