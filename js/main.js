@@ -3,7 +3,7 @@
 // Deckfish is a 2p game for the Decktet by Alfonso Velasco.
 //
 
-/* global decktet, lz-string */
+/* global decktet, LZString */
 
 // jQuery style selectors.
 const $ = document.querySelector.bind(document);
@@ -103,7 +103,7 @@ context.game = (function () {
 		context.message.init();
 		context.settings.init();
 		context.ui.init();
-	
+		
 		context.io.loadCheck();
 
 		context.ui.initListeners();
@@ -129,6 +129,9 @@ context.game = (function () {
 		context.message.gamelog("Reloading game at last " + phase,1);
 
 		context.deck.reload();
+
+		//Once we have a game, we can activate the replay button.
+		context.dom.replayButton();
 
 		//Return to the suspended listening state.
 		var solo =  isSolo();
@@ -231,7 +234,7 @@ context.game = (function () {
 		context.board.initializeTableau();
 
 		//Once we have a game, we can activate the replay button.
-		$("button#replayButton").disabled = false;
+		context.dom.replayButton();
 
 		controller('load');
 	}
@@ -1018,8 +1021,6 @@ context.io = (function () {
 		getReload: getReload,
 		getState: getState,
 		loadCheck: loadCheck,
-		loadFromStorage: loadFromStorage,
-		loadURL: loadURL,
 		saveToStorage: saveToStorage,		
 		setState: setState,
 		shareURL: shareURL,
@@ -1063,28 +1064,17 @@ context.io = (function () {
 
 	function loadCheck() {
 		//TODO: Resolve conflicts between a URL and a stored game.
+		//Get the query string.
+		let params = new URLSearchParams(window.location.search);
+		let compressedGame = params.get('game');
 
-		if (loadFromStorage()) {
-			context.game.reload();
+		if (compressedGame) {
+			loadFromURL(compressedGame);
+			//Calls reload or errors.
+		} else {
+			//Check local storage instead.
+			loadFromStorage();
 		}
-	}
-
-	function loadFromStorage() {
-		//We have our own calls to LocalStorage because 
-		//the default one is overloaded with typechecking, etc.
-		var stateString = context.settings.getGame();
-		if (!stateString)
-			return false;
-
-		var stateObj = decompress(stateString);
-		context.message.clearLog();
-		context.message.log("Reloading game from localStorage.",1);
-
-		setState(stateObj);
-		return true;
-	}
-
-	function loadURL() {
 	}
 
 	function setState(s) {
@@ -1111,28 +1101,66 @@ context.io = (function () {
 	}
 
 	function saveToStorage() {
-		var storableState = compress(getState()); //Raw.
+		var storableState = compress(getState());
 		context.settings.setGame(storableState);
 	}
 
 	function shareURL() {
-		//TODO: encode game in URL
-		context.message.log("Share button.");
-		//https://pieroxy.net/blog/pages/lz-string/index.html
-		//https://garrett-bodley.medium.com/encoding-data-inside-of-a-url-query-string-f286b7e20465
-		//https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText
+		//context.message.log("Sharing is caring",-3);
+		let compressedGame = compress(getState());
+		let url = new URL(window.location);
+		url.searchParams.set("game",compressedGame);
+		history.pushState({}, "", url);
+
+		//TODO: add to clipboard, requires https
+		writeToClipboard(url);
 	}
 
 	/* private */
 
+	async function writeToClipboard(url) {
+		try {
+			await navigator.clipboard.writeText(url);
+		} catch (error) {
+			context.message.log("Error writing URL to clipboard: " + error.message,3);
+		}
+	}
+
 	function compress(obj) {
-		//TODO
-		return JSON.stringify(obj);
+		return LZString.compressToEncodedURIComponent(JSON.stringify(obj));
 	}
 
 	function decompress(str) {
 		//TODO
-		return JSON.parse(str);
+		return JSON.parse(LZString.decompressFromEncodedURIComponent(str));
+	}
+
+	function loadFromStorage() {
+		var stateString = context.settings.getGame();
+		if (!stateString)
+			return;
+
+		var stateObj = decompress(stateString);
+		context.message.clearLog();
+		context.message.log("Reloading game from localStorage.",1);
+
+		loadFromObject(stateObj);
+	}
+
+	function loadFromURL(compressedGame) {
+		//Combine with the other function eventually.
+		var stateObj = decompress(compressedGame);
+
+		//TODO: validate and return false if corrupt.
+		//console.log(stateObj);
+		context.message.log("Reloading game from URL parameter.",1);
+
+		loadFromObject(stateObj);
+	}
+
+	function loadFromObject(stateObj) {
+		setState(stateObj);
+		context.game.reload();
 	}
 
 })();
@@ -2502,7 +2530,7 @@ context.ui = (function () {
 		$('#shareButton').addEventListener('click', () => {
 			///context.io.shareURL();
 			//Temporarily testing as a save button.
-			context.io.saveToStorage();
+			context.io.shareURL();
 		});
 
 		// special settings panel events
@@ -2660,6 +2688,7 @@ context.dom = (function () {
 		getMeeple: getMeeple,
 		glow: glow,
 		questionButton: questionButton,
+		replayButton: replayButton,
 		setImage: setImage,
 		show: show,
 		showPanel: showPanel,
@@ -2742,6 +2771,11 @@ context.dom = (function () {
 			$("#question").innerText = "";
 			$("#question").style.visibility = 'hidden';
 		}
+	}
+
+	function replayButton(disable) {
+		//Activate the replay button.
+		$("button#replayButton").disabled = false;
 	}
 
 	function setImage(loc,card,reload) {
