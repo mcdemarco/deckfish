@@ -20,7 +20,7 @@ var main = {};
 												 level: 1,
 												 magnification: false,
 												 seating: 'hotseat',
-												 starting: 'yellow'
+												 starting: 'yellow',
 												};
 
 	var version = "0.0.1";
@@ -57,6 +57,7 @@ context.game = (function () {
 		init: init,
 		getPhase: getPhase,
 		getStartPlayer: getStartPlayer,
+		is2P: is2P,
 		isBot: isBot,
 		isSolo: isSolo,
 		newGame: newGame,
@@ -109,12 +110,16 @@ context.game = (function () {
 		context.ui.initListeners();
 	}
 
+	function is2P() {
+		return !!( context.settings.get('seating') == 'hotseat' || context.settings.get('seating') == 'pbem' );
+	}
+
 	function isBot() {
-		return !!(context.settings.get('seating') == 'bot');
+		return !!( context.settings.get('seating') == 'bot' );
 	}
 
 	function isSolo() {
-		return !!(context.settings.get('seating') == 'solo');
+		return !!( context.settings.get('seating') == 'solo' );
 	}
 
 	function newGame() {
@@ -137,6 +142,7 @@ context.game = (function () {
 		var solo =  isSolo();
 
 		if (phase == 'load' || phase == 'meeple') {
+
 			//Reactivate meeple stage
 			if (solo)
 				context.meeple.setMeepTurn(0);
@@ -148,19 +154,24 @@ context.game = (function () {
 				context.meeple.setMeepTurn(prevple);
 			}
 			context.meeple.controller('reload');
+
 		} else if (phase == 'move') {
+
 			//Reactivate the turn.  
 			//This is the only one that needed controller support.
 			context.turn.controller('reload');
+
 		} else if (phase == 'exchange') {
+
 			//Need the turn header.
 			context.ui.turner(context.turn.getTurn(),'');
 			//Reactivate the exchange.  
 			context.board.controller('reload');
+
 		} else if (phase == 'score') {
+
 			//Recalc and rewrite the final status.
-			
-			//TODO
+			context.score.controller('reload');
 		}
 	}
 
@@ -219,6 +230,7 @@ context.game = (function () {
 		context.dom.unlog();
 		context.ui.unturner();
 		context.dom.unmeeple();
+		context.dom.titleMessage();
 
 		context.score.clean();
 
@@ -283,6 +295,7 @@ context.turn = (function () {
 
 		if (previous == 'failedautomove' && mopup) {
 			context.game.controller('turn');
+			context.dom.titleMessage();
 			return;
 		}
 		
@@ -304,7 +317,6 @@ context.turn = (function () {
 			incTurnCount();
 
 			//We need to decide whether to increment the player.
-console.log("solo, mopup, fail, other", context.game.isSolo(), mopup, previous);
 			if (context.game.isSolo()) {
 				turn = 0;
 			} else if (mopup) {
@@ -419,8 +431,12 @@ console.log("solo, mopup, fail, other", context.game.isSolo(), mopup, previous);
 			thePlayer = turn;
 
 		var playaCola = thePlayer ? "purple" : "yellow";
-		if (!noMessage)
-			context.message.gamelog(playaCola + "'s turn:", 1);
+		if (!noMessage) {
+			let msg = playaCola + "'s turn"
+			context.message.gamelog(msg + ":", 1);
+			if (context.game.is2P())
+				context.dom.titleMessage(msg);
+		}
 
 		context.ui.turner(thePlayer,'Move a meeple.');
 		context.dom.questionButton('Pass?');
@@ -1107,24 +1123,28 @@ context.io = (function () {
 
 	function shareURL() {
 		//context.message.log("Sharing is caring",-3);
-		let compressedGame = compress(getState());
-		let url = new URL(window.location);
-		url.searchParams.set("game",compressedGame);
+		let url = getURL();
+		//Write it to the location bar.
 		history.pushState({}, "", url);
-
-		//TODO: add to clipboard, requires https
-		writeToClipboard(url);
+		
+		//Share attempts.  Both require https.
+		if (navigator.share) {
+			//Try the share panel.
+			navigator.share({
+				title: "It's your turn at Deckfish!",
+				url: url
+			});
+		} else if (navigator.clipboard) {
+			//Try the clipboard.
+			writeToClipboard(url);
+		} else {
+			//TODO: Alert the user that the link is in the location bar,
+			//and advise them to use https.
+			alert(url);
+		}
 	}
 
 	/* private */
-
-	async function writeToClipboard(url) {
-		try {
-			await navigator.clipboard.writeText(url);
-		} catch (error) {
-			context.message.log("Error writing URL to clipboard: " + error.message,3);
-		}
-	}
 
 	function compress(obj) {
 		return LZString.compressToEncodedURIComponent(JSON.stringify(obj));
@@ -1133,6 +1153,13 @@ context.io = (function () {
 	function decompress(str) {
 		//TODO
 		return JSON.parse(LZString.decompressFromEncodedURIComponent(str));
+	}
+
+	function getURL() {
+		let compressedGame = compress(getState());
+		let url = new URL(window.location);
+		url.searchParams.set("game",compressedGame);
+		return url;
 	}
 
 	function loadFromStorage() {
@@ -1161,6 +1188,15 @@ context.io = (function () {
 	function loadFromObject(stateObj) {
 		setState(stateObj);
 		context.game.reload();
+	}
+
+	async function writeToClipboard(url) {
+		try {
+			await navigator.clipboard.writeText(url);
+		} catch (e) {
+			context.message.log("Error writing URL to clipboard, probably due to lack of https: " + e.message,3);
+			//TODO: some other notification that it worked?
+		}
 	}
 
 })();
@@ -2692,6 +2728,7 @@ context.dom = (function () {
 		setImage: setImage,
 		show: show,
 		showPanel: showPanel,
+		titleMessage: titleMessage,
 		turnMessage: turnMessage,
 		unglow: unglow,
 		unglowAll: unglowAll,
@@ -2846,6 +2883,9 @@ context.dom = (function () {
 		window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
 	}
 
+	function titleMessage(msg) {
+		document.title = "Deckfish - " + (msg ? capitalize(msg) : "a Decktet game");
+	}
 
 	function turnMessage(msg) {
 		$('#message').innerText = msg;
@@ -2879,8 +2919,15 @@ context.dom = (function () {
 		);
 	}
 
+	/* private */
+
+	function capitalize(str) {
+    return String(str).charAt(0).toUpperCase() + String(str).slice(1);
+	}
+
 	function waitForElement(selector) {
 		//https://stackoverflow.com/a/61511955
+		//No longer used.
     return new Promise(resolve => {
       if (document.querySelector(selector)) {
         return resolve(document.querySelector(selector));
@@ -2901,7 +2948,6 @@ context.dom = (function () {
     });
 	}
 		
-
 })();
 
 
@@ -2911,11 +2957,11 @@ context.dom = (function () {
 
 /* TODO:
  * may still be an endgame turn issue with bot mode
- * IO.
  * turn count may be a bit off in solo games
  * Expand AI levels with a better move choice algorithm, and a "worse" one
  * polyfill sets for ios 16 (test in simulator)
- * hide share button until meeples placed to reduce sharing complications
  * toggle share/save button or autosave?
  * mysterious bot game where bot wouldn't move and yellow could - fixed?
+ * change document title to get ios sharing to show the title I want?
+ * add player names for 2p modes in addition to yellow/purple
  */
