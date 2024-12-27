@@ -54,6 +54,7 @@ context.game = (function () {
 
 	return {
 		controller: controller,
+		clean: clean,
 		init: init,
 		getPhase: getPhase,
 		getStartPlayer: getStartPlayer,
@@ -69,7 +70,7 @@ context.game = (function () {
 
 	function controller(previous) {
 		//Determines the next action from state and the previous action.
-		console.log("In the new controller after " + previous);
+		context.message.log("In the new controller after " + previous, -2);
 
 		if (previous == 'load') {
 			//If there was no previous action, we are probably starting a game.
@@ -87,6 +88,29 @@ context.game = (function () {
 			//Move on to scoring.
 			context.score.controller(previous);
 		}
+	}
+
+	function clean() {
+		//Erase existing cards.
+		$$(".cardspace").forEach(elt => elt.style.backgroundImage = "");
+
+		//Unhighlight.  Don't really need both.
+		context.dom.unglowAll();
+		//it's important to nuke the tableau
+		unsetAll();
+
+		//Clear instructions and any open panels.
+		context.message.turn('');
+		context.dom.show('');
+		context.dom.questionButton();
+		context.dom.unlog();
+		context.ui.unturner();
+		context.dom.unmeeple();
+		context.dom.titleMessage();
+
+		context.score.clean();
+
+		context.ui.unlisten();
 	}
 
 	function getPhase() {
@@ -149,7 +173,6 @@ context.game = (function () {
 			else {
 				//Meeples are ordered and marked, so we can derive the next turn from them.
 				var meeps = context.meeple.getAll();
-				console.log(meeps);
 				var prevple = meeps.length ? meeps[meeps.length - 1][2] : context.game.getStartPlayer();
 				context.meeple.setMeepTurn(prevple);
 			}
@@ -214,28 +237,6 @@ context.game = (function () {
 
 	/* private */
 
-	function clean() {
-		//Erase existing cards.
-		$$(".cardspace").forEach(elt => elt.style.backgroundImage = "");
-
-		//Unhighlight.  Don't really need both.
-		context.dom.unglowAll();
-		//it's important to nuke the tableau
-		unsetAll();
-
-		//Clear instructions and any open panels.
-		context.message.turn('');
-		context.dom.show('');
-		context.dom.questionButton();
-		context.dom.unlog();
-		context.ui.unturner();
-		context.dom.unmeeple();
-		context.dom.titleMessage();
-
-		context.score.clean();
-
-		context.ui.unlisten();
-	}
 
 	function game() {
 		//Clear the screen.
@@ -289,7 +290,7 @@ context.turn = (function () {
 	function controller(previous,startPlayer) {
 		//because it needs logic
 		//startPlayer is only passed from the game controller for the first move.
-		console.log("In the turn controller after " + previous);
+		context.message.log("In the turn controller after " + previous,-2);
 
 		context.game.setPhase('move');
 
@@ -406,15 +407,15 @@ context.turn = (function () {
 
 	function huturn(thePlayer) {
 		//await human interaction and return
-		console.log("In huturn at " + turnCount);
+		context.message.log("In huturn at " + turnCount,-2);
 		turner();
 		context.ui.listen('move');
-		console.log("Leaving huturn at " + turnCount);
+		context.message.log("Leaving huturn at " + turnCount,-2);
 	}
 
 	function inhuturn() {
 		//The bot moves.
-		console.log("In inhuturn at " + turnCount);
+		context.message.log("In inhuturn at " + turnCount,-2);
 
 		context.message.gamelog("purple's turn:", 1);
 		if (context.auto.mover()) {
@@ -423,7 +424,7 @@ context.turn = (function () {
 			context.message.gamelog('No moves remaining.',2);
 			context.turn.controller('failedautomove');
 		}
-		console.log("Leaving inhuturn at " + turnCount);
+		context.message.log("Leaving inhuturn at " + turnCount,-2);
 		return;
 	}
 
@@ -729,7 +730,7 @@ context.auto = (function () {
 	function autoMove(meepleLoc,ranked) {
 		//The automaton makes the first (unranked) or best (ranked) 
 		//move for this meeple.
-console.log("In automove with ranked? " + !!ranked);
+		context.message.log("In automove with ranked? " + !!ranked,-3);
 		var someTargets = assembleTargets(meepleLoc,ranked);
 		for (var t = 0; t<someTargets.length; t++) {
 			if (context.logic.clickedForMove(someTargets[t],true)) {
@@ -775,7 +776,7 @@ context.board = (function () {
 	function controller(previous) {
 		//This is the exchange controller.
 		//It's so empty b/c auto-exchanging isn't implemented yet.
-		console.log("In the exchange controller.");
+		context.message.log("In the exchange controller.",-2);
 		context.game.setPhase('exchange');
 
 		//Make a promise?
@@ -1036,6 +1037,7 @@ context.io = (function () {
 		cleanURL: cleanURL,
 		loadCheck: loadCheck,
 		redo: redo,
+		reloadURL: reloadURL,
 		shareURL: shareURL,
 		undo: undo
 	}
@@ -1054,7 +1056,6 @@ context.io = (function () {
 
 	function cleanURL() {
 		let url = window.location.origin + window.location.pathname;
-		console.log("erasing search");
 		history.pushState({}, "", url);
 	}
 
@@ -1074,8 +1075,22 @@ context.io = (function () {
 	}
 
 	function redo() {
-		console.log("redo");
+		context.message.log("redo",-2);
 		history.forward();
+	}
+
+	function reloadURL(evt) {
+		context.message.log("Reloading for re/undos",-2);
+		//window.location.reload();
+		//For un/redos, the page is dirty 
+		//so we need to do more than the usual reload.
+		let params = new URLSearchParams(window.location.search);
+		let compressedGame = params.get('game');
+
+		if (compressedGame) {
+			context.game.clean();
+			loadFromURL(compressedGame);
+		}
 	}
 
 	function shareURL() {
@@ -1083,8 +1098,11 @@ context.io = (function () {
 		let url = getURL();
 
 		//TODO: Write it to the location bar if it changed.
-		history.pushState({}, "", url);
-		
+		if (url != window.location.href) {
+			//Not sure this case can happen.
+			history.pushState({}, "", url);
+		}
+
 		//Share attempts.  Both require https.
 		if (navigator.share) {
 			//Try the share panel.
@@ -1100,7 +1118,7 @@ context.io = (function () {
 	}
 
 	function undo() {
-		console.log("undo");
+		context.message.log("undo",-2);
 		history.back();
 	}
 
@@ -1167,7 +1185,6 @@ context.io = (function () {
 		var stateObj = decompress(compressedGame);
 
 		//TODO: validate and return false if corrupt.
-		//console.log(stateObj);
 		context.message.log("Reloading game from URL parameter.",1);
 
 		loadFromObject(stateObj);
@@ -1372,7 +1389,6 @@ context.logic = (function () {
 	/* private */
 
 	function hasMoveTo(loc) {
-		console.log("In hasMoveTo for location " + loc);
 		context.message.log("Checking a move to " + loc,-3);
 
 		//First, the low-hanging fruit.
@@ -1394,7 +1410,7 @@ context.logic = (function () {
 
 		//From here on we need the previously selected card location.
 		var meepleLoc = context.select.get();
-		console.log("Selected meeple loc is: " + meepleLoc);
+		context.message.log("Selected meeple loc is: " + meepleLoc,-3);
 		if (context.board.equals(meepleLoc, loc)) {
 			//Selected the meeple himself.  In this case, unselect and return.
 			context.message.log("Unmeeping...",-2);
@@ -1891,9 +1907,6 @@ context.meeple = (function () {
 		}
 		//continue
 
-		console.log("meepTurn: " + meepTurn);
-		//turn message here
-
 		if (context.game.isBot() && meepTurn == 1) {
 			context.auto.meepler();
 			return;
@@ -2119,7 +2132,7 @@ context.score = (function () {
 	function controller(previous) {
 		//Previous doesn't matter much here; 
 		//this is mostly for reloading resolved games.
-		console.log("In the score controller after " + previous);
+		context.message.log("In the score controller after " + previous,-2);
 
 		if (previous == 'turn') {
 			//Move on to scoring.
@@ -2428,7 +2441,7 @@ context.settings = (function () {
 		} else {
 			context.message.log("Failed to retrieve state for want of local storage.",0);
 		}
-console.log(stateString);
+
 		return stateString;
 	}
 
@@ -2619,8 +2632,7 @@ context.ui = (function () {
 			context.io.redo();
 		});
 		window.addEventListener("popstate", (event) => {
-			console.log("Reloading for re/undos");
-			window.location.reload();
+			context.io.reloadURL(event);
 		});
 		
 	}
@@ -2648,7 +2660,6 @@ context.ui = (function () {
 		//ui section of log writer.
 		var par = document.createElement(level == 1 ? "p" : "div");
 		var count = context.turn.getTurnCount();
-		//console.log("ui.logging at level " + level + " and count " + count + " message " + msg);
 
 		if (count && !noCount && level == 1) {
 			par.classList.add("indexed");
@@ -3009,6 +3020,7 @@ context.dom = (function () {
  * polyfill sets for ios 16 (test in simulator)
  * toggle share/save button or autosave?
  * mysterious bot game where bot wouldn't move and yellow could - fixed?
- * change document title to get ios sharing to show the title I want?
+ * changing document title didn't get ios to show the title I want, so undo?
  * add player names for 2p modes in addition to yellow/purple
+ * more control/prompting for pbem
  */
