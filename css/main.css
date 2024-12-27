@@ -676,3 +676,12 @@ div.shortspace cite {
     top: 0px;
     left: 50%;
 }
+
+#rundoButtons {
+    margin-top: 10px;
+}
+
+#rundoButtons img {
+    height: 24px;
+    width: 24px;
+}

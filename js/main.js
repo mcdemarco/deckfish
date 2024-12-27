@@ -126,11 +126,11 @@ context.game = (function () {
 		//Shuffle the old deck.
 		context.message.gamelog("Shuffling...",1);
 		context.board.shuffle();
+		context.io.cleanURL();
 		game();
 	}
 
 	function reload() {
-		reload = true;
 		context.message.gamelog("Reloading game at last " + phase,1);
 
 		context.deck.reload();
@@ -331,7 +331,8 @@ context.turn = (function () {
 		}
 
 		//Make a promise?
-		context.io.autoshave();
+		if (previous != 'reload')
+			context.io.autoshave('turn',turn);
 
 		//Need to take a turn, so all we need to know is if it's a bot game.
 		if (context.game.isBot() && turn == 1) {
@@ -771,15 +772,15 @@ context.board = (function () {
 		unsetTableau: unsetTableau
 	};
 
-	function controller(thePlayer) {
+	function controller(previous) {
 		//This is the exchange controller.
-		//It's so empty b/c thePlayer only matters for purposes of auto-exchanging, 
-		//which isn't implemented yet.
+		//It's so empty b/c auto-exchanging isn't implemented yet.
 		console.log("In the exchange controller.");
 		context.game.setPhase('exchange');
 
 		//Make a promise?
-		context.io.autoshave();
+		if (previous != 'reload')
+			context.io.autoshave('board',-1);
 
 		//await human interaction and return to the turn controller.
 		context.message.turn('Exchange cards?');
@@ -1030,28 +1031,88 @@ context.deck = (function () {
 
 context.io = (function () {
 
-	let reload = false;
-
 	return {
 		autoshave: autoshave,
-		getReload: getReload,
-		getState: getState,
+		cleanURL: cleanURL,
 		loadCheck: loadCheck,
-		saveToStorage: saveToStorage,		
-		setState: setState,
+		redo: redo,
 		shareURL: shareURL,
+		undo: undo
 	}
 
 	//When passing state between functions, it should be an object.
 
-	function autoshave() {
-		//Autosave on state changes, or automatically update the share link.
-		//TODO: the share bit
-		saveToStorage();
+	function autoshave(caller, value) {
+		//Autosave on state changes (as a side effect of getting the url),
+		//and/or automatically update the share link.
+
+		let url = getURL();
+		//Write it to the location bar.
+		history.pushState({turnCount: context.turn.getTurnCount(), caller: caller, at: value}, "", url);
+		saveToStorage(url);
 	}
 
-	function getReload() {
-		return reload;
+	function cleanURL() {
+		let url = window.location.origin + window.location.pathname;
+		console.log("erasing search");
+		history.pushState({}, "", url);
+	}
+
+	function loadCheck() {
+		//TODO: Resolve conflicts between a URL and a stored game.
+		//Get the query string.
+		let params = new URLSearchParams(window.location.search);
+		let compressedGame = params.get('game');
+
+		if (compressedGame) {
+			loadFromURL(compressedGame);
+			//Calls reload or errors.
+		} else {
+			//Check local storage instead.
+			loadFromStorage();
+		}
+	}
+
+	function redo() {
+		console.log("redo");
+		history.forward();
+	}
+
+	function shareURL() {
+		//context.message.log("Sharing is caring",-3);
+		let url = getURL();
+
+		//TODO: Write it to the location bar if it changed.
+		history.pushState({}, "", url);
+		
+		//Share attempts.  Both require https.
+		if (navigator.share) {
+			//Try the share panel.
+			openSharePanel(url);
+		} else if (navigator.clipboard) {
+			//Try the clipboard.
+			writeToClipboard(url);
+		} else {
+			//TODO: Alert the user that the link is in the location bar,
+			//and advise them to use https.
+			alert(url);
+		}
+	}
+
+	function undo() {
+		console.log("undo");
+		history.back();
+	}
+
+	/* private */
+
+	function compress(obj) {
+		return LZString.compressToEncodedURIComponent(JSON.stringify(obj));
+	}
+
+	function decompress(str) {
+		//TODO
+		return JSON.parse(LZString.decompressFromEncodedURIComponent(str));
 	}
 
 	function getState() {
@@ -1078,85 +1139,12 @@ context.io = (function () {
 		return currentState;
 	}
 
-	function loadCheck() {
-		//TODO: Resolve conflicts between a URL and a stored game.
-		//Get the query string.
-		let params = new URLSearchParams(window.location.search);
-		let compressedGame = params.get('game');
-
-		if (compressedGame) {
-			loadFromURL(compressedGame);
-			//Calls reload or errors.
-		} else {
-			//Check local storage instead.
-			loadFromStorage();
-		}
-	}
-
-	function setState(s) {
-		//Load the game from a set state.  This will be tricksy.
-		context.game.setPhase(s.phase);
-		context.game.setStarter(s.starter);
-
-		context.turn.setTurn(s.turn);
-		context.turn.setTurnCount(s.turnCount);
-		context.turn.setMopup(s.mopup);
-
-		context.board.setShuffle(s.shuffle);
-		context.board.setFullTableau(s.tableau);
-		context.board.setFullMarket(s.market);
-
-		context.meeple.setAll(s.meeples);
-
-		context.score.set(s.scores);
-
-		context.settings.set('level',s.level);
-		context.settings.set('seating',s.seating);
-
-		context.message.log("Reloaded state...",-1);
-	}
-
-	function saveToStorage() {
-		var storableState = compress(getState());
-		context.settings.setGame(storableState);
-	}
-
-	function shareURL() {
-		//context.message.log("Sharing is caring",-3);
-		let url = getURL();
-		//Write it to the location bar.
-		history.pushState({}, "", url);
-		
-		//Share attempts.  Both require https.
-		if (navigator.share) {
-			//Try the share panel.
-			navigator.share({
-				title: "It's your turn at Deckfish!",
-				url: url
-			});
-		} else if (navigator.clipboard) {
-			//Try the clipboard.
-			writeToClipboard(url);
-		} else {
-			//TODO: Alert the user that the link is in the location bar,
-			//and advise them to use https.
-			alert(url);
-		}
-	}
-
-	/* private */
-
-	function compress(obj) {
-		return LZString.compressToEncodedURIComponent(JSON.stringify(obj));
-	}
-
-	function decompress(str) {
-		//TODO
-		return JSON.parse(LZString.decompressFromEncodedURIComponent(str));
-	}
-
 	function getURL() {
 		let compressedGame = compress(getState());
+
+		//saveToStorage as a side effect.
+		context.settings.setGame(compressedGame);
+
 		let url = new URL(window.location);
 		url.searchParams.set("game",compressedGame);
 		return url;
@@ -1188,6 +1176,49 @@ context.io = (function () {
 	function loadFromObject(stateObj) {
 		setState(stateObj);
 		context.game.reload();
+	}
+
+	async function openSharePanel(url) {
+		try {
+			await navigator.share({
+				title: document.title,
+				text: "It's your turn at Deckfish!",
+				url: url
+			})
+				.then(() => context.message.log("Shared url.",1))
+				.catch((e) => context.message.log("Error sending URL to share panel, probably due to user cancellation: " + e.message,3));
+		} catch (e) {
+			context.message.log("Error sending URL to share panel, probably due to user cancellation: " + e.message,3);
+			//TODO: some other notification that it worked?
+		}
+	}
+
+	function saveToStorage() {
+		var storableState = compress(getState());
+		context.settings.setGame(storableState);
+	}
+
+	function setState(s) {
+		//Load the game from a set state.  This will be tricksy.
+		context.game.setPhase(s.phase);
+		context.game.setStarter(s.starter);
+
+		context.turn.setTurn(s.turn);
+		context.turn.setTurnCount(s.turnCount);
+		context.turn.setMopup(s.mopup);
+
+		context.board.setShuffle(s.shuffle);
+		context.board.setFullTableau(s.tableau);
+		context.board.setFullMarket(s.market);
+
+		context.meeple.setAll(s.meeples);
+
+		context.score.set(s.scores);
+
+		context.settings.set('level',s.level);
+		context.settings.set('seating',s.seating);
+
+		context.message.log("Reloaded state...",-1);
 	}
 
 	async function writeToClipboard(url) {
@@ -1847,7 +1878,8 @@ context.meeple = (function () {
 		}
 
 		//Make a promise?
-		context.io.autoshave();
+		if (previous != 'reload')
+			context.io.autoshave('meeple',meeps.length);
 
 		//Decide whether we need to increment player.
 		//We also increment startplayer because he doesn't start the meepling.
@@ -2451,6 +2483,8 @@ console.log(stateString);
 		//Reset all settings to defaults, shortcutting via localStorage.
 		try {
 			window.localStorage.clear();
+			context.io.cleanURL();
+			//double reload?
 			window.location.reload();
 		} catch(e) {
 			context.message.log("Failed to clear local storage due to: " + e);
@@ -2576,6 +2610,19 @@ context.ui = (function () {
 		$('div#settingsPanel button.close').addEventListener('click', () => {
 			context.settings.checkForChanges();
 		});
+
+		//Temporarily set these up here for testing.
+		$('img#undo').addEventListener('click', () => {
+			context.io.undo();
+		});
+		$('img#redo').addEventListener('click', () => {
+			context.io.redo();
+		});
+		window.addEventListener("popstate", (event) => {
+			console.log("Reloading for re/undos");
+			window.location.reload();
+		});
+		
 	}
 
 	function listen(newphase) {
