@@ -133,6 +133,13 @@ p.lastbutton {
 }
 
 
+#rundoButtons img {
+    height: 24px;
+    width: 24px;
+}
+
+
+
 /* sidebar topbarred for portrait phone */
 
 @media screen and (max-device-width: 600px) and (orientation: portrait),
@@ -197,7 +204,8 @@ p.lastbutton {
 	margin: 2px;
     }
 
-    div#buttondiv #lastbutton {
+    div#buttondiv #lastbutton,
+    div#buttondiv #rundoButtons {
 	margin: 0 3px 0 20px;
     }
 
@@ -315,6 +323,7 @@ body {
 }
 
 #settingsPanel div p:first-child, 
+mark,
 tt {
     font-family: 'Fortune Letters', Futura, Geneva, sans-serif;
 }
@@ -368,6 +377,9 @@ button#question {
     text-align: center;
 }
 
+mark {
+    color: inherit;
+}
 
 /* panels */
 
@@ -452,6 +464,8 @@ button#question {
     text-align:right;
 }
 
+#httpsCheck {display:none;}
+
 hr {
     border:0;
     height:1px;
@@ -479,6 +493,7 @@ a:visited {
 img.symbol {
     height: 15px;
     border-radius: 3px;
+    background-color: white;
 }
 
 .magnify img.symbol {
@@ -501,6 +516,10 @@ dt {
 dd {
     padding-left: 5%;
     font-size: smaller;
+}
+
+div.dimmable.dim {
+    color: #ddd;
 }
 
 
@@ -658,7 +677,6 @@ td {
 }
 
 
-
 /* chess notation */
 
 div.space cite,
@@ -677,11 +695,5 @@ div.shortspace cite {
     left: 50%;
 }
 
-#rundoButtons {
-    margin-top: 10px;
-}
 
-#rundoButtons img {
-    height: 24px;
-    width: 24px;
-}
+

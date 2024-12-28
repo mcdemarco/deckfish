@@ -40,17 +40,16 @@
 			<div id="lastbutton">
 				<button type="button" class="button" id="shareButton" title="Share next turn URL">Share</button>
 			</div>
+			<div id="rundoButtons">
+				<img id="undo" title="Undo" src="css/undo.svg"/>
+				<img id="redo" title="Redo" src="css/redo.svg"/>
+			</div>
 		</div>
 		<div id="infoWrapper">
 			<div id="turner"></div>
 			<br/>
 			<div id="message"></div>
 			<button id="question" type="button"></button>
-			<br/>
-			<div id="rundoButtons">
-				<img id="undo" title="Undo" src="css/undo.svg"/>
-				<img id="redo" title="Redo" src="css/redo.svg"/>
-			</div>
 		</div>
 
 		<div id="panelLinks">
@@ -154,18 +153,33 @@
 
 
 
+  <div id="shareFill" class="panel">
+        <h3>Share This Game</h3>
+				<p id="httpsCheck">For more convenient sharing options, please access the game over https at <tt id="httpsLink"></tt>.</p>
+				<p>
+					<textarea id="shareURL" rows="8" cols="75"></textarea>
+				</p>
+        <button type="button" class="close button">Close</button>
+  </div>
+
   <div id="gameOver" class="panel">
-        <h2>Game Over!</h2>
-				<p></p>
-        <button type="button" id="gameOverCloseButton" class="close button">Close</button>
+    <h2>Game Over!</h2>
+		<p></p>
+    <button type="button" id="gameOverCloseButton" class="close button">Close</button>
   </div>
 
   <div id="whatsthestory" class="panel">
 						<h3>About the Decktet</h3>
-						<p>The Decktet is an alternative deck of cards with six suits (named Moons <img class="symbol" src="cards/moons_black.png" alt="suit symbol for moons"/>, Suns <img class="symbol" src="cards/suns.png" alt="suit symbol for suns"/>, Waves <img class="symbol" src="cards/waves.png" alt="suit symbol for waves"/>, Leaves <img class="symbol" src="cards/leaves.png" alt="suit symbol for leaves"/>, Wyrms <img class="symbol" src="cards/wyrms.png" alt="suit symbol for wyrms"/>, and Knots <img class="symbol" src="cards/knots.png" alt="suit symbol for knots"/>), ten to twelve ranks, multiple suits on most cards, and other intriguing features not used while playing Deckfish.  In the Decktet, the ranks are Ace, 2. 3, 4, 5, 6, 7, 8, 9, Pawn, Court, and Crown.  Numbered cards have two suits each.  Aces have a single, round suit marker <img class="symbol" src="cards/wyrms.png" alt="suit symbol for wyrms"/> in the center and corners, and Crowns <img class="symbol" src="cards/crown.png" alt="crown symbol"/> also have only one suit.  Pawns <img class="symbol" src="cards/pawn.png" alt="pawn symbol"/> and Courts <img class="symbol" src="cards/court.png" alt="court symbol"/> are triple-suited cards, and The Excuse has no suits.  The suit distribution follows no particular pattern.</p>
+						<p>The Decktet is an alternative deck of cards with six suits (named 
+							<mark>Moons</mark> <img class="symbol" src="cards/moons_black.png" alt="suit symbol for moons"/>, 
+							<mark>Suns</mark> <img class="symbol" src="cards/suns.png" alt="suit symbol for suns"/>, 
+							<mark>Waves</mark> <img class="symbol" src="cards/waves.png" alt="suit symbol for waves"/>, 
+							<mark>Leaves</mark> <img class="symbol" src="cards/leaves.png" alt="suit symbol for leaves"/>, 
+							<mark>Wyrms</mark> <img class="symbol" src="cards/wyrms.png" alt="suit symbol for wyrms"/>, and 
+							<mark>Knots</mark> <img class="symbol" src="cards/knots.png" alt="suit symbol for knots"/>), ten to twelve ranks, multiple suits on most cards, and other intriguing features not used while playing Deckfish.  In the Decktet, the ranks are Ace, 2. 3, 4, 5, 6, 7, 8, 9, Pawn, Court, and Crown.  Numbered cards have two suits each.  <mark>Aces</mark> have a single, round suit marker <img class="symbol" src="cards/wyrms.png" alt="suit symbol for wyrms"/> in the center and corners, and <mark>Crowns</mark> <img class="symbol" src="cards/crown.png" alt="crown symbol"/> also have only one suit.  <mark>Pawns</mark> <img class="symbol" src="cards/pawn.png" alt="pawn symbol"/> and <mark>Courts</mark> <img class="symbol" src="cards/court.png" alt="court symbol"/> are triple-suited cards, and The Excuse has no suits.  The suit distribution follows no particular pattern.</p>
 
             <h3>About the Game</h3>
-						<p>Deckfish is a two player game of map reduction and suit collection where the player with the most of their least collected suit wins.  In this solitaire variant, you will also try to collect suits on a constantly shrinking gameboard.</p>
+						<p>Deckfish is a two player game of map reduction and suit collection by Alfonso Velasco in which the player with the most of their least collected suit wins.  In the solitaire variant, you also collect suits on a constantly shrinking gameboard.</p>
 
             <h3>Credits</h3>
             <p>The Decktet card system was created by P.D. Magnus. The card images and card backs shown here are released under a Creative Commons License by P.D. Magnus.  The optional black moons are a cosmetic change by M.C. DeMarco to increase legibility on small screens.  The handwriting font is Fortune Letters, also by P.D. Magnus.  The background texture is "Skulls" by Adam, from <a href="http://subtlepatterns.com/skulls/">Subtle Patterns</a>.  The meeple icon is from Game-icons.net, used under a CC Attribution license.</p>
@@ -178,10 +192,18 @@
 				
 	<div id="rules" class="panel">
 							<h3>How to Play</h3>
-							<p>The two-player game starts with a phase of each player placing their three meeples on three Aces or Crowns, starting with the second player.  After that, the start player makes the first move.   Each player moves one meeple per turn, using one of the six kinds of meeple movement.  (See below for details.)</p> 
+							<p>The two-player game starts with a phase of players alternately placing their meeples onto the main tableau, on Aces or Crowns.  The second player places first.  After the six (total) meeples have been placed, the start player makes the first move.   Each player moves one of their own meeples per turn, using one of the six kinds of meeple movement.  (See below for details.)</p> 
 							<p>Choose one of your meeples by clicking on it, and (mentally) choose one of the suits on its current card.  Find a card you can move to using this suit power, and click on that target card.  The card your meeple was on is added to your score; you score one point in each suit on the card (regardless of which suit power you used).</p>
 							<p>After this move, you may optionally exchange an unoccupied card from the board with one of the three market cards.</p>
-							<!--  p>In most browsers, your game will be saved automatically so you can return to it later.  There is an optional undo button, which will undo any number of moves in your current session (but not from a saved game).</p -->
+
+							<h3>Passing</h3>
+
+							<p>If you think you cannot move, you can pass by pressing the <tt>Pass?</tt> button.  If a move is found for you, it will be taken automatically and you will remain in the game.  Otherwise, you are out of the game.  The other player continues until he also has no moves left.</p>
+
+							<h3>The End</h3>
+							<p>The game is over when neither player can move.  Your score will be evaluated automatically.  The winner is the player with the highest score in his lowest-scoring suit.  Ties are broken with subsequent lowest-scoring suits, etc.  It is very difficult to actually tie the game.</p>
+
+							<p>You can always start over with the New Game button, or replay the same game (deal) with the Replay button.</p>
 
 							<h3>The Suit Movements</h3>
 							<p>Each Decktet suit has its own movement type.  Movement and adjacency are orthogonal unless noted otherwise.  You cannot move through or stop on the Excuse, another meeple, or an empty space, unless noted otherwise.</p>
@@ -205,21 +227,20 @@
 								<dd>Move three spaces orthogonally, not necessarily in a straight line but without retracing your path.</dd>
 							</dl>
 
-							<h3>Passing</h3>
+							<h3>Saving, Sharing, and Undoing</h3>
 
-							<p>If you think you cannot move, you can pass by pressing the <tt>Pass?</tt> button.  If a move is found for you, it will be taken automatically and you will remain in the game.  Otherwise, you are out of the game.  The other player continues until he also has no moves left.</p>
+							<p>In most browsers, your game will be saved automatically so you can return to it later.  You can also save the game state or move your current game to another browser using the Share button.</p>
 
-							<h3>The End</h3>
-							<p>The game is over when neither player can move.  Your score will be evaluated automatically.  The winner is the player with the highest score in his lowest-scoring suit.  Ties are broken with subsequent lowest-scoring suits, etc.  It is very difficult to actually tie the game.</p>
-
-							<p>You can always start over with the New Game button, or replay the same game (deal) with the Replay button.</p>
+							<p>The undo <img class="symbol" src="css/undo.svg" alt="undo button"/> and redo <img class="symbol" src="css/redo.svg" alt="redo button"/> buttons will undo or redo any number of moves in your current browser session, though it can only undo new moves after loading a saved or shared game, not the entire game history.  You can also use your browser's back and forward buttons to undo or redo.</p>
 
 							<h3>Solo and Bot Modes</h3>
 
-							<p>The bot game works just like a two-player game.  The human player plays yellow, and the bot plays purple.  There are some options in the settings to artificially strengthen the bot because he's not very good.</p>
-
 							<p>The solo game is a challenge to improve your score using three meeples on a random board, with three meeple obstacles that don't take turns, but can still be bumped by a Wyrms move.  The human player plays yellow, and the obstacles are purple.  Obstacles are seeded first.  Your high score will be saved locally, but note that Safari throws away local data after a week or so of disuse unless you add Deckfish to the home screen.</p>
 
+							<p>The bot game works like a two-player game.  The human player plays yellow, and the bot plays purple.  There are some options in the settings to artificially strengthen the bot because he's not very good.</p>
+
+							<!-- h3>Hotseat and PBeM Modes</h3 -->
+							
 
         <button type="button" class="close button">Close</button>
   </div>
@@ -250,12 +271,6 @@
 					<p>For added legibility, a black sky background has been added to the moon suit.  Uncheck this option to use the unadulterated artwork in your next game.</p>
 				</div>
 				
-				<!-- a lot to promise div>
-						 <p style="text-align:right;white-space:nowrap;">
-						 <input type="checkbox" id="hints" title="Show the possible moves." /> Show Possible Moves</p>
-						 <p>When selecting a gap, all cards that can go into it will be highlighted.  When selecting a card, any gap it can go into will be highlighted.  Shiftable sequences of cards will also be highlighted.</p>
-						 </div-->
-
 				<!-- h3>Game</h3 -->
 				<div>
 					<p>
@@ -270,7 +285,7 @@
 						Two players can play on a shared device (hotseat mode), or by sharing links, PBeM-style.</p>
 				</div>
 
-				<div>
+				<div class="dimmable" id="settingLevelDIV">
 					<p>
 						<label><input type="radio" name="level" id="level1" title="Easy" value="1" /> Easy</label>
 						<label><input type="radio" name="level" id="level2" title="Medium" value="2" /> Medium</label>
@@ -279,7 +294,7 @@
 					<p>Difficulty level for the bot opponent.  The bot is not very smart, so in some cases it will make illegal initial placements.  Otherwise it follows the rules.</p>
 				</div>
 
-				<div>
+				<div class="dimmable" id="settingStarterDIV">
 					<p>
 						<label><input type="radio" name="starting" id="yellow" value="yellow" title="Yellow starts."/> Yellow</label>
 						<label><input type="radio" name="starting" id="purple" value="purple" title="Purple starts."/> Purple</label>

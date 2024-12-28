@@ -45,8 +45,6 @@ var main = {};
 //ui
 //dom
 
-
-
 context.game = (function () {
 
 	let phase = 'load'; // load, meeple, move, exchange, score
@@ -71,6 +69,7 @@ context.game = (function () {
 	function controller(previous) {
 		//Determines the next action from state and the previous action.
 		context.message.log("In the new controller after " + previous, -2);
+		setPhase('load');
 
 		if (previous == 'load') {
 			//If there was no previous action, we are probably starting a game.
@@ -123,12 +122,12 @@ context.game = (function () {
 
 	function init() {
 		//The initialization function called on document ready.
-		
 		context.deck.init();
 		context.message.init();
 		context.settings.init();
 		context.ui.init();
 		
+		context.io.init();
 		context.io.loadCheck();
 
 		context.ui.initListeners();
@@ -264,8 +263,6 @@ context.game = (function () {
 
 })();
 
-
-
 context.turn = (function () {
 
 	let turn = 1;
@@ -291,7 +288,6 @@ context.turn = (function () {
 		//because it needs logic
 		//startPlayer is only passed from the game controller for the first move.
 		context.message.log("In the turn controller after " + previous,-2);
-
 		context.game.setPhase('move');
 
 		if (previous == 'failedautomove' && mopup) {
@@ -446,8 +442,6 @@ context.turn = (function () {
 
 })();
 
-
-
 context.auto = (function () {
 
 	return {
@@ -460,7 +454,7 @@ context.auto = (function () {
 	}
 
 	function exchanger() {
-		//TODO: implement random/nonrandom exchanging
+		//TODO: implement random/nonrandom exchanging for bot
 	}
 
 	function meepler(permitIllegal) {
@@ -745,8 +739,6 @@ context.auto = (function () {
 
 })();
 
-
-
 context.board = (function () {
 
 	let tableau = [];//Array of arrays
@@ -924,8 +916,6 @@ context.board = (function () {
 
 })();
 
-
-
 context.deck = (function () {
 
 	let deck = [];
@@ -1028,13 +1018,12 @@ context.deck = (function () {
 
 })();
 
-
-
 context.io = (function () {
 
 	return {
 		autoshave: autoshave,
 		cleanURL: cleanURL,
+		init: init,
 		loadCheck: loadCheck,
 		redo: redo,
 		reloadURL: reloadURL,
@@ -1045,8 +1034,8 @@ context.io = (function () {
 	//When passing state between functions, it should be an object.
 
 	function autoshave(caller, value) {
-		//Autosave on state changes (as a side effect of getting the url),
-		//and/or automatically update the share link.
+		//Autosave on state changes and
+		//automatically update the history & share link.
 
 		let url = getURL();
 		//Write it to the location bar.
@@ -1057,6 +1046,15 @@ context.io = (function () {
 	function cleanURL() {
 		let url = window.location.origin + window.location.pathname;
 		history.pushState({}, "", url);
+	}
+
+	function init() {
+		console.log("io init");
+		//Just sets the initial recommended url if accessed over http.
+		if (window.location.protocol == 'http:') { 
+			$('p#httpsCheck').style.display = 'block';
+			$('#httpsLink').textContent = "https://" + window.location.hostname + window.location.pathname;
+		}
 	}
 
 	function loadCheck() {
@@ -1105,7 +1103,7 @@ context.io = (function () {
 
 		//Share attempts.  Both require https.
 		if (navigator.share) {
-			//Try the share panel.
+			//Try the native share panel.
 			openSharePanel(url);
 		} else if (navigator.clipboard) {
 			//Try the clipboard.
@@ -1113,7 +1111,8 @@ context.io = (function () {
 		} else {
 			//TODO: Alert the user that the link is in the location bar,
 			//and advise them to use https.
-			alert(url);
+			context.dom.show('shareFill');
+			$('#shareURL').value = url;
 		}
 	}
 
@@ -1248,8 +1247,6 @@ context.io = (function () {
 	}
 
 })();
-
-
 
 context.logic = (function () {
 
@@ -1849,8 +1846,6 @@ context.logic = (function () {
 
 })();
 
-
-
 context.meeple = (function () {
 
 	let meeps = [];
@@ -1874,6 +1869,7 @@ context.meeple = (function () {
 	function controller(previous) {
 		//Note that the start player actually places meeples second.
 		context.message.log("In the meeple controller after " + previous + ".", -1);
+		context.game.setPhase('meeple');
 
 		if (meeps.length == 6) {
 			context.game.controller('meeple');
@@ -2036,8 +2032,6 @@ context.meeple = (function () {
 
 })();
 
-
-
 context.message = (function () {
 
 	return {
@@ -2113,8 +2107,6 @@ context.message = (function () {
 
 })();
 
-
-
 context.score = (function () {
 
 	let	scores = [{},{}];
@@ -2133,11 +2125,14 @@ context.score = (function () {
 		//Previous doesn't matter much here; 
 		//this is mostly for reloading resolved games.
 		context.message.log("In the score controller after " + previous,-2);
+		context.game.setPhase('score');
 
 		if (previous == 'turn') {
 			//Move on to scoring.
 			context.dom.questionButton();
 			context.ui.unturner();
+
+			context.io.autoshave('score',-1);
 		}
 
 		//All cases.
@@ -2251,8 +2246,8 @@ context.score = (function () {
 		var msg;
 		var toSave = Object.values(scores[0]);
 
-		var yellowSort = Object.values(scores[0]).sort();
-		var purpleSort = Object.values(scores[1]).sort();
+		var yellowSort = Object.values(scores[0]).sort((a, b) => a - b);
+		var purpleSort = Object.values(scores[1]).sort((a, b) => a - b);
 		var winray = yellowSort.map((item, index) => item - purpleSort[index]).filter((item) => item != 0);
 		if (winray.length == 0) {
 			//it's a tie
@@ -2268,6 +2263,8 @@ context.score = (function () {
 
 		context.message.over(msg,true);
 		context.message.turn("Game over.");
+
+console.log(yellowSort, purpleSort, winray);
 
 		if (solo && winray.length && winray[0] > 0 && !reloaded)
 			context.settings.set('highScore',toSave);
@@ -2297,8 +2294,6 @@ context.score = (function () {
 	}
 
 })();
-
-
 
 context.select = (function () {
 
@@ -2337,8 +2332,6 @@ context.select = (function () {
 	}
 
 })();
-
-
 
 context.settings = (function () {
 
@@ -2382,6 +2375,8 @@ context.settings = (function () {
 		$("input#level" + get('level')).checked = true;
 		$("input#" + get('seating')).checked = true;
 		$("input#" + get('starting')).checked = true;
+
+		context.ui.setter();
 	}
 
 	function checkForChanges() {
@@ -2505,8 +2500,6 @@ context.settings = (function () {
 	}
 
 })();
-	
-
 
 context.ui = (function () {
 
@@ -2519,6 +2512,7 @@ context.ui = (function () {
 		listen: listen,
 		log: log,
 		scaler: scaler,
+		setter: setter,
 		skipExchange: skipExchange,
 		skipMove: skipMove,
 		turner: turner,
@@ -2623,6 +2617,10 @@ context.ui = (function () {
 		$('div#settingsPanel button.close').addEventListener('click', () => {
 			context.settings.checkForChanges();
 		});
+		$$('input[name="seating"]').forEach( el => el.addEventListener('click', (event) => {
+			context.ui.setter(event)
+		}
+		));
 
 		//Temporarily set these up here for testing.
 		$('img#undo').addEventListener('click', () => {
@@ -2669,6 +2667,29 @@ context.ui = (function () {
 		}
 
 		$('#gamelog').appendChild(par);
+	}
+
+	function setter(ev) {
+		//For configuring the settings for usability.
+		$$('div.dim input').forEach(elt => elt.disabled = false);
+		$$('div.dim').forEach(elt => elt.classList.remove('dim'));
+
+		let seating = ev ? ev.target.value : context.settings.get('seating');
+		switch (seating) {
+
+			case "solo":
+			$('#settingStarterDIV').classList.add('dim');
+			$$('#settingStarterDIV input').forEach(elt => elt.disabled = true);
+
+			case "hotseat":
+			case "pbem":
+			$('#settingLevelDIV').classList.add('dim');
+			$$('#settingLevelDIV input').forEach(elt => elt.disabled = true);
+			break;
+
+			default:
+			break;
+		}
 	}
 
 	function scaler() {
@@ -2768,8 +2789,6 @@ context.ui = (function () {
 	}
 
 })();
-	
-
 
 context.dom = (function () {
 
@@ -2982,32 +3001,8 @@ context.dom = (function () {
 	function capitalize(str) {
     return String(str).charAt(0).toUpperCase() + String(str).slice(1);
 	}
-
-	function waitForElement(selector) {
-		//https://stackoverflow.com/a/61511955
-		//No longer used.
-    return new Promise(resolve => {
-      if (document.querySelector(selector)) {
-        return resolve(document.querySelector(selector));
-      }
-
-      const observer = new MutationObserver(mutations => {
-        if (document.querySelector(selector)) {
-          observer.disconnect();
-          resolve(document.querySelector(selector));
-        }
-      });
-
-      // If you get "parameter 1 is not of type 'Node'" error, see https://stackoverflow.com/a/77855838/492336
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-    });
-	}
 		
 })();
-
 
 })(main);
 
@@ -3016,11 +3011,14 @@ context.dom = (function () {
 /* TODO:
  * may still be an endgame turn issue with bot mode
  * turn count may be a bit off in solo games
+ * log layout issues?
+
  * Expand AI levels with a better move choice algorithm, and a "worse" one
  * polyfill sets for ios 16 (test in simulator)
- * toggle share/save button or autosave?
- * mysterious bot game where bot wouldn't move and yellow could - fixed?
+
  * changing document title didn't get ios to show the title I want, so undo?
+ * simplify autoshave because not using the state.
+
  * add player names for 2p modes in addition to yellow/purple
  * more control/prompting for pbem
  */
