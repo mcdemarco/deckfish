@@ -41,6 +41,7 @@ var main = {};
 //logic
 //message
 //score
+//select
 //settings
 //ui
 //dom
@@ -526,7 +527,7 @@ context.auto = (function () {
 			}
 		}
 		//Else no moves were found.
-		context.select.unset();
+		context.select.unsetAll();
 		context.message.gamelog('No moves remaining.',2);
 		context.turn.controller('failedautomove');
 	}
@@ -806,6 +807,7 @@ context.board = (function () {
 
 		setMarket(marketLoc,tableauIdx);
 		setTableau(tableauLoc,marketIdx);
+		context.select.setExchanged(tableauLoc,marketLoc);
 
 		context.select.unset();
 	}
@@ -1049,7 +1051,6 @@ context.io = (function () {
 	}
 
 	function init() {
-		console.log("io init");
 		//Just sets the initial recommended url if accessed over http.
 		if (window.location.protocol == 'http:') { 
 			$('p#httpsCheck').style.display = 'block';
@@ -1145,6 +1146,8 @@ context.io = (function () {
 			tableau: context.board.getFullTableau(),
 			market: context.board.getFullMarket(),
 			meeples: context.meeple.getAll(),
+			exchanged: context.select.getExchanged(),
+			moved: context.select.getMoved(),
 			scores: context.score.get(),
 			level: context.settings.get('level'),
 			seating: context.settings.get('seating')
@@ -1228,6 +1231,11 @@ context.io = (function () {
 		context.board.setFullMarket(s.market);
 
 		context.meeple.setAll(s.meeples);
+
+		if (s.exchanged && s.exchanged.length)
+			context.select.setExchanged(s.exchanged[0],s.exchanged[1]);
+		if (s.moved && s.moved.length)
+			context.select.setMoved(s.moved[0],s.moved[1],s.moved[2]);
 
 		context.score.set(s.scores);
 
@@ -1954,6 +1962,12 @@ context.meeple = (function () {
 				mee[0] = newloc[0];
 				mee[1] = newloc[1];
 				context.message.gamelog((bounce ? "Bounced a" : (auto ? "Automatically moved a" : "Moved")) + " meeple from " + context.message.translate(oldloc) + " to " + context.message.translate(newloc) + ".",2);
+				if (!bounce) {
+					//Set new move.
+					//Also unsets all old highlighting.
+					context.select.setMoved(oldloc,newloc,context.turn.getTurn());
+					//Need to unset the old exchange elsewhere.
+				}
 				break;
 			}
 		}
@@ -2249,6 +2263,15 @@ context.score = (function () {
 		var yellowSort = Object.values(scores[0]).sort((a, b) => a - b);
 		var purpleSort = Object.values(scores[1]).sort((a, b) => a - b);
 		var winray = yellowSort.map((item, index) => item - purpleSort[index]).filter((item) => item != 0);
+
+		if (solo && winray.length == 0) {
+			//Special sort for tied arrays.
+			yellowSort = Object.values(scores[0]);
+			purpleSort = Object.values(scores[1]);
+			winray = (yellowSort.map((item, index) => item - purpleSort[index]).filter((item) => item != 0)).reverse();
+			context.message.log("Special tie breaker for solo: " + winray,-1);
+		}
+
 		if (winray.length == 0) {
 			//it's a tie
 			msg = solo ? "tied" : "It's a tie!";
@@ -2263,8 +2286,6 @@ context.score = (function () {
 
 		context.message.over(msg,true);
 		context.message.turn("Game over.");
-
-console.log(yellowSort, purpleSort, winray);
 
 		if (solo && winray.length && winray[0] > 0 && !reloaded)
 			context.settings.set('highScore',toSave);
@@ -2297,16 +2318,36 @@ console.log(yellowSort, purpleSort, winray);
 
 context.select = (function () {
 
+	let exchanged = []; //One tableau location, one market location, for most recent move's exchange.
+	let moved = []; //One meeple location, one new gap location, player color, for most recent move.
 	let selected = []; //Don't save selection with the game.
 
 	return {
+		display: display,
 		get: get,
+		getExchanged: getExchanged,
+		getMoved: getMoved,
 		set: set,
-		unset: unset
+		setExchanged: setExchanged,
+		setMoved: setMoved,
+		unset: unset,
+		unsetAll: unsetAll
 	};
+
+	function display() {
+		//Display highlighting of the last move and exchange, if there was an exchange.
+	}
 
 	function get() {
 		return selected;
+	}
+
+	function getExchanged() {
+		return exchanged;
+	}
+
+	function getMoved() {
+		return moved;
 	}
 
 	function set(loc) {
@@ -2318,9 +2359,47 @@ context.select = (function () {
 		context.dom.glow(loc);
 	}
 
+	function setExchanged(loc,marketLoc) {
+		//Unhighlighting would have happened on setMove.
+		//so only set and highlight.
+		console.log("Setting exchanged to ", loc, marketLoc);
+
+		if (loc && loc.length)
+			exchanged = [loc, marketLoc];
+		else {
+			exchanged = [];
+			return;
+		}
+
+		console.log("Glowing exchanged at ", loc, marketLoc);
+		
+		context.dom.glow(loc,"exchanged");
+		context.dom.glow(marketLoc,"exchanged");
+	}
+
+	function setMoved(meepleLoc,gapLoc,player) {
+		//Unhighlight any old one.
+		unglowTurn();
+		let color = context.turn.getColorFromTurn(player);
+
+		//Now set and highlight.
+		moved = [meepleLoc,gapLoc,player];
+		context.dom.glow(meepleLoc,color);
+		context.dom.glow(gapLoc,color);
+	}
+
 	function unset() {
 		//Also unhighlight.
 		unglow();
+		selected = [];
+	}
+
+	function unsetAll() {
+		//Also unhighlight all.
+		unglow();
+		unglowTurn();
+		exchanged = [];
+		moved = [];
 		selected = [];
 	}
 
@@ -2329,6 +2408,12 @@ context.select = (function () {
 	function unglow() {
 		if (selected && selected.length)
 			context.dom.unglow(selected);
+	}
+
+	function unglowTurn() {
+		context.dom.unglowByColor("yellow");
+		context.dom.unglowByColor("purple");
+		context.dom.unglowByColor("exchanged");
 	}
 
 })();
@@ -2538,6 +2623,7 @@ context.ui = (function () {
 
 	function skipExchange(ev) {
 		context.select.unset();
+		context.select.setExchanged();
 		context.ui.unlisten('exchange');
 		context.turn.controller('skipex');
 	}
@@ -2809,6 +2895,7 @@ context.dom = (function () {
 		turnMessage: turnMessage,
 		unglow: unglow,
 		unglowAll: unglowAll,
+		unglowByColor: unglowByColor,
 		unlog: unlog,
 		unmeeple: unmeeple
 	};
@@ -2869,12 +2956,15 @@ context.dom = (function () {
 		return image;
 	}
 
-	function glow(loc) {
+	function glow(loc,color) {
+		if (!color)
+			color = "selected";
 		//Can also unglow.
+		console.log("glowing " + context.message.translate(loc));
 		if (loc[1] > -1)
-			$("div.cardspace[data-row='" + loc[0] + "'][data-col='" + loc[1] + "']").classList.toggle("selected");
+			$("div.cardspace[data-row='" + loc[0] + "'][data-col='" + loc[1] + "']").classList.toggle(color);
 		else
-			$("div.marketspace[data-row='" + loc[0] + "']").classList.toggle("selected");
+			$("div.marketspace[data-row='" + loc[0] + "']").classList.toggle(color);
 	}
 
 	function questionButton(text) {
@@ -2968,18 +3058,35 @@ context.dom = (function () {
 		$('#message').innerText = msg;
 	}
 
-	function unglow(loc) {
+	function unglow(loc,color) {
+		if (!color)
+			color = "selected";
+
 		//Pure unglow for inits as well.
 		if (loc[1] != -1)
-			$("div.cardspace[data-row='" + loc[0] + "'][data-col='" + loc[1] + "']").classList.remove("selected");
+			$("div.cardspace[data-row='" + loc[0] + "'][data-col='" + loc[1] + "']").classList.remove(color);
 		else
-			$("div.marketspace[data-row='" + loc[0] + "']").classList.remove("selected");
+			$("div.marketspace[data-row='" + loc[0] + "']").classList.remove(color);
 	}
 
 	function unglowAll() {
-		//Clear all selections, e.g., for a new round.  Ideally there would be only one but just in case...
+		//Clear all selections and other glows, e.g., for a new round.
+		//Ideally there would be only one of most of these, but just in case, they're all forEaches.
+
 		$$("div.cardspace.selected").forEach(el => el.classList.remove("selected"));
 		$$("div.marketspace.selected").forEach(el => el.classList.remove("selected"));
+
+		$$("div.cardspace.exchanged").forEach(el => el.classList.remove("exchanged"));
+		$$("div.marketspace.exchanged").forEach(el => el.classList.remove("exchanged"));
+
+		$$("div.cardspace.yellow").forEach(el => el.classList.remove("yellow"));
+		$$("div.cardspace.purple").forEach(el => el.classList.remove("purple"));
+	}
+
+	function unglowByColor(color) {
+		$$("div.cardspace." + color).forEach(el => el.classList.remove(color));
+		//May not apply.
+		$$("div.marketspace." + color).forEach(el => el.classList.remove(color));
 	}
 		
 	function unlog() {
@@ -3021,4 +3128,5 @@ context.dom = (function () {
 
  * add player names for 2p modes in addition to yellow/purple
  * more control/prompting for pbem
+ *** the recap ***
  */
